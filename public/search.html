@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Daily Shell — Smart Search</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0f; --bg2: #0d0d18; --bg3: #111120; --border: #1e1e30; --border2: #2a2a40;
+    --purple: #7c6fff; --purple2: #a89fff; --text: #e8e6df; --muted: #5a5a7a;
+    --dimmed: #3a3a55; --green: #4ade80; --amber: #f59e0b; --red: #f87171;
+  }
+  body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'Space Grotesk', sans-serif; }
+
+  /* Header */
+  .header { position: sticky; top: 0; z-index: 100; background: #0d0d14ee; backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); padding: 12px 28px; display: flex; align-items: center; gap: 12px; }
+  .logo { font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 500; color: var(--purple); text-decoration: none; }
+  .logo span { color: var(--text); }
+  .breadcrumb { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .nav-planner { margin-left: auto; display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 500; color: var(--purple2); text-decoration: none; font-family: 'IBM Plex Mono', monospace; padding: 6px 14px; border: 1px solid #2e2048; border-radius: 6px; transition: all 0.15s; }
+  .nav-planner:hover { background: #1a1428; }
+
+  .main { max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  /* Search box */
+  .search-wrap { position: relative; margin-bottom: 14px; }
+  .search-input { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: 10px; padding: 15px 130px 15px 48px; font-family: 'Space Grotesk', sans-serif; font-size: 15px; color: var(--text); outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+  .search-input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(124,111,255,0.12); }
+  .search-input::placeholder { color: var(--dimmed); }
+  .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--dimmed); font-size: 20px; pointer-events: none; }
+  .search-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: var(--purple); color: #fff; border: none; border-radius: 7px; padding: 8px 20px; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; gap: 6px; }
+  .search-btn:hover { background: #6a5dee; }
+  .search-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* Suggestions dropdown */
+  .suggestions-box { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #131325; border: 1px solid var(--border2); border-radius: 10px; overflow: hidden; z-index: 200; box-shadow: 0 12px 40px rgba(0,0,0,0.4); display: none; }
+  .suggestions-box.show { display: block; }
+  .suggestion-item { padding: 11px 16px; font-size: 13px; color: #b0aed0; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.1s; }
+  .suggestion-item:hover, .suggestion-item.active { background: #1a1a30; color: var(--text); }
+  .suggestion-item i { color: var(--dimmed); font-size: 14px; }
+
+  /* Controls */
+  .controls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 28px; }
+  .source-tab { padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border2); background: transparent; color: var(--muted); font-family: 'Space Grotesk', sans-serif; transition: all 0.15s; display: flex; align-items: center; gap: 5px; }
+  .source-tab.active { background: #1a1a30; border-color: var(--purple); color: var(--purple2); }
+  .divider { width: 1px; height: 18px; background: var(--border2); }
+  .topk-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+  .topk-select { background: var(--bg3); border: 1px solid var(--border2); border-radius: 6px; color: var(--purple2); font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 4px 10px; outline: none; cursor: pointer; }
+
+  /* Correction banner */
+  .correction-bar { display: none; align-items: center; gap: 8px; padding: 10px 16px; background: #0f0f22; border: 1px solid #2a2a50; border-radius: 8px; margin-bottom: 20px; font-size: 13px; }
+  .correction-bar.show { display: flex; }
+  .correction-bar i { color: var(--purple); }
+  .correction-bar .label { color: var(--muted); }
+  .correction-bar .words { font-family: 'IBM Plex Mono', monospace; color: var(--purple2); font-size: 12px; }
+
+  /* Status */
+  .status-bar { display: none; align-items: center; gap: 10px; margin-bottom: 20px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+  .status-bar.show { display: flex; }
+  .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--purple); animation: pulse 1.1s infinite; flex-shrink: 0; }
+
+  /* Conversational overview panel */
+  .overview-panel { background: var(--bg2); border: 1px solid var(--border2); border-radius: 12px; padding: 24px; margin-bottom: 28px; display: none; animation: fadeUp 0.3s ease; }
+  .overview-panel.show { display: block; }
+  .overview-avatar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .avatar-dot { width: 32px; height: 32px; border-radius: 50%; background: #1a1428; border: 1px solid #2e2048; display: flex; align-items: center; justify-content: center; font-size: 15px; color: var(--purple); flex-shrink: 0; }
+  .avatar-name { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--purple2); }
+  .overview-greeting { font-size: 15px; color: var(--text); margin-bottom: 14px; line-height: 1.55; }
+  .overview-explanation { font-size: 13px; color: #8080a8; line-height: 1.7; margin-bottom: 16px; }
+  .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .overview-block { background: #0a0a14; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .overview-block-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--purple); margin-bottom: 6px; }
+  .overview-block-text { font-size: 12px; color: #7070a0; line-height: 1.5; }
+  .areas-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .area-tag { font-size: 11px; padding: 3px 10px; background: #1a1428; color: var(--purple2); border: 1px solid #2e2048; border-radius: 20px; font-family: 'IBM Plex Mono', monospace; }
+  .suggestions-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .sugg-tag { font-size: 12px; padding: 4px 12px; background: transparent; color: var(--muted); border: 1px solid var(--border2); border-radius: 20px; cursor: pointer; transition: all 0.15s; font-family: 'Space Grotesk', sans-serif; }
+  .sugg-tag:hover { border-color: var(--purple); color: var(--purple2); background: #1a1428; }
+
+  /* Results */
+  .results-meta { display: none; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .results-meta.show { display: flex; }
+  .res-count { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+  .k-pill { font-family: 'IBM Plex Mono', monospace; font-size: 10px; padding: 2px 8px; border-radius: 4px; background: #1a1428; color: var(--purple); border: 1px solid #2e2048; }
+  .results-list { display: flex; flex-direction: column; gap: 14px; }
+
+  /* Result card */
+  .result-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; animation: fadeUp 0.25s ease both; transition: border-color 0.15s; }
+  .result-card:hover { border-color: #2e2e48; }
+  .card-body { padding: 18px 20px 14px; }
+  .card-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .src-tag { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--dimmed); text-transform: uppercase; letter-spacing: 0.8px; }
+  .year-tag { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #2e2e48; }
+  .card-title { font-size: 14px; font-weight: 500; color: #c8c6df; margin-bottom: 4px; line-height: 1.45; text-decoration: none; display: block; transition: color 0.15s; }
+  .card-title:hover { color: var(--purple2); }
+  .card-authors { font-size: 12px; color: #38384e; margin-bottom: 10px; }
+
+  /* Inline abstract expand */
+  .abstract-toggle { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 10px; transition: color 0.15s; background: none; border: none; padding: 0; }
+  .abstract-toggle:hover { color: var(--purple2); }
+  .abstract-text { font-size: 12px; color: #5a5a7a; line-height: 1.65; margin-bottom: 10px; display: none; border-left: 2px solid #2a2a40; padding-left: 12px; }
+  .abstract-text.show { display: block; }
+
+  .score-row { display: flex; align-items: center; gap: 10px; }
+  .score-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+  .score-track { flex: 1; height: 4px; background: #181828; border-radius: 2px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 2px; width: 0; transition: width 0.9s cubic-bezier(0.4,0,0.2,1); }
+  .score-num { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; min-width: 38px; text-align: right; }
+
+  .insight-panel { border-top: 1px solid #181828; padding: 12px 20px; background: #09090f; }
+  .insight-header { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+  .insight-badge { font-family: 'IBM Plex Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; padding: 2px 7px; border-radius: 3px; background: #14102a; color: var(--purple); border: 1px solid #28204a; }
+  .insight-text { font-size: 12.5px; line-height: 1.6; color: #7070a0; }
+  .insight-loading { color: var(--dimmed); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+
+  /* Take to planner CTA */
+  .planner-cta { display: none; margin-top: 32px; padding: 20px 24px; background: #0f0a20; border: 1px solid #2e2048; border-radius: 12px; align-items: center; gap: 16px; }
+  .planner-cta.show { display: flex; }
+  .planner-cta-text h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .planner-cta-text p { font-size: 12px; color: var(--muted); }
+  .planner-btn { margin-left: auto; white-space: nowrap; background: var(--purple); color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: background 0.15s; flex-shrink: 0; }
+  .planner-btn:hover { background: #6a5dee; }
+
+  .empty { display: none; text-align: center; padding: 60px 20px; }
+  .empty.show { display: block; }
+  .empty-icon { font-size: 36px; color: #222234; margin-bottom: 14px; }
+  .empty-text { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--dimmed); }
+
+  .dots span { animation: dot 1.2s infinite; opacity: 0; }
+  .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes fadeUp  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes pulse   { 0%,100% { opacity:1; } 50% { opacity:0.25; } }
+  @keyframes dot     { 0%,60%,100% { opacity:0; } 30% { opacity:1; } }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a class="logo" href="/">daily<span>-shell</span></a>
+  <div class="breadcrumb"><i class="ti ti-chevron-right"></i> Smart Search</div>
+  <a class="nav-planner" href="/planner"><i class="ti ti-brain"></i> Research Planner</a>
+</header>
+
+<main class="main">
+
+  <!-- Search -->
+  <div class="search-wrap" id="searchWrap">
+    <i class="ti ti-search search-icon" aria-hidden="true"></i>
+    <input class="search-input" id="searchInput" type="text" autocomplete="off"
+      placeholder="Search any research topic… e.g. transformer attention mechanism"/>
+    <button class="search-btn" id="searchBtn" onclick="runSearch()">
+      <i class="ti ti-arrow-right" style="font-size:14px"></i> Search
+    </button>
+    <div class="suggestions-box" id="suggestionsBox"></div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls-row">
+    <button class="source-tab active" onclick="setSource(this,'arxiv')"><i class="ti ti-books"></i> arXiv</button>
+    <button class="source-tab" onclick="setSource(this,'scholar')"><i class="ti ti-school"></i> Google Scholar</button>
+    <div class="divider"></div>
+    <span class="topk-label">Top K</span>
+    <select class="topk-select" id="topkSelect">
+      <option value="3">3</option>
+      <option value="5" selected>5</option>
+      <option value="8">8</option>
+      <option value="10">10</option>
+    </select>
+  </div>
+
+  <!-- Correction banner -->
+  <div class="correction-bar" id="correctionBar">
+    <i class="ti ti-wand"></i>
+    <span class="label">AI corrected:</span>
+    <span class="words" id="correctionWords"></span>
+  </div>
+
+  <!-- Status -->
+  <div class="status-bar" id="statusBar">
+    <div class="pulse"></div>
+    <span id="statusText">Thinking…</span>
+  </div>
+
+  <!-- Conversational Overview -->
+  <div class="overview-panel" id="overviewPanel">
+    <div class="overview-avatar">
+      <div class="avatar-dot"><i class="ti ti-robot"></i></div>
+      <span class="avatar-name">daily-shell / search-engine</span>
+    </div>
+    <p class="overview-greeting" id="ovGreeting"></p>
+    <p class="overview-explanation" id="ovExplanation"></p>
+    <div class="overview-grid">
+      <div class="overview-block">
+        <div class="overview-block-label">Key Research Areas</div>
+        <div class="areas-list" id="ovAreas"></div>
+      </div>
+      <div class="overview-block">
+        <div class="overview-block-label">Research Gap</div>
+        <div class="overview-block-text" id="ovGap"></div>
+      </div>
+      <div class="overview-block" style="grid-column: span 2">
+        <div class="overview-block-label">Real-world Usefulness</div>
+        <div class="overview-block-text" id="ovUsefulness"></div>
+      </div>
+    </div>
+    <div class="overview-block">
+      <div class="overview-block-label">Explore Related Topics</div>
+      <div class="suggestions-row" id="ovSuggestions"></div>
+    </div>
+  </div>
+
+  <!-- Results meta -->
+  <div class="results-meta" id="resultsMeta">
+    <span class="res-count" id="resCount"></span>
+    <span class="k-pill" id="kPill"></span>
+  </div>
+
+  <!-- Results -->
+  <div class="results-list" id="resultsList"></div>
+
+  <!-- Empty -->
+  <div class="empty" id="emptyState">
+    <div class="empty-icon"><i class="ti ti-search-off"></i></div>
+    <p class="empty-text">no results found — try a different query</p>
+  </div>
+
+  <!-- Take to Planner CTA -->
+  <div class="planner-cta" id="plannerCta">
+    <div>
+      <div class="avatar-dot" style="width:36px;height:36px;font-size:18px"><i class="ti ti-brain"></i></div>
+    </div>
+    <div class="planner-cta-text">
+      <h3>Ready to plan your research?</h3>
+      <p>Take these results directly to the Research Planner — your context will be pre-loaded.</p>
+    </div>
+    <button class="planner-btn" onclick="goToPlanner()">
+      <i class="ti ti-brain"></i> Open Research Planner
+    </button>
+  </div>
+
+</main>
+
+<script>
+  let activeSource = 'arxiv';
+  let lastQuery = '';
+  let lastPapers = [];
+  let lastOverview = {};
+  let suggestTimer = null;
+  let activeSuggIdx = -1;
+  let currentSuggestions = [];
+
+  // ── Suggestions ─────────────────────────────────────────────────────────────
+  const input = document.getElementById('searchInput');
+  const box   = document.getElementById('suggestionsBox');
+
+  input.addEventListener('input', () => {
+    clearTimeout(suggestTimer);
+    const val = input.value.trim();
+    if (val.length < 3) { box.classList.remove('show'); return; }
+    suggestTimer = setTimeout(() => fetchSuggestions(val), 350);
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { box.classList.remove('show'); runSearch(); return; }
+    if (e.key === 'ArrowDown') { activeSuggIdx = Math.min(activeSuggIdx + 1, currentSuggestions.length - 1); renderSuggHighlight(); e.preventDefault(); }
+    if (e.key === 'ArrowUp')   { activeSuggIdx = Math.max(activeSuggIdx - 1, -1); renderSuggHighlight(); e.preventDefault(); }
+    if (e.key === 'Escape')    { box.classList.remove('show'); }
+  });
+
+  document.addEventListener('click', e => {
+    if (!document.getElementById('searchWrap').contains(e.target)) box.classList.remove('show');
+  });
+
+  async function fetchSuggestions(q) {
+    try {
+      const res = await fetch('/api/suggest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
+      const data = await res.json();
+      currentSuggestions = data.suggestions || [];
+      activeSuggIdx = -1;
+      renderSuggestions();
+    } catch(e) {}
+  }
+
+  function renderSuggestions() {
+    if (!currentSuggestions.length) { box.classList.remove('show'); return; }
+    box.innerHTML = currentSuggestions.map((s, i) =>
+      `<div class="suggestion-item" data-idx="${i}" onclick="pickSuggestion(${i})">
+        <i class="ti ti-search"></i> ${s}
+      </div>`
+    ).join('');
+    box.classList.add('show');
+  }
+
+  function renderSuggHighlight() {
+    box.querySelectorAll('.suggestion-item').forEach((el, i) => {
+      el.classList.toggle('active', i === activeSuggIdx);
+    });
+    if (activeSuggIdx >= 0) input.value = currentSuggestions[activeSuggIdx];
+  }
+
+  function pickSuggestion(idx) {
+    input.value = currentSuggestions[idx];
+    box.classList.remove('show');
+    runSearch();
+  }
+
+  // ── Source / helpers ─────────────────────────────────────────────────────────
+  function setSource(el, src) {
+    document.querySelectorAll('.source-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    activeSource = src;
+  }
+
+  function setStatus(text, show) {
+    document.getElementById('statusBar').classList.toggle('show', show);
+    document.getElementById('statusText').textContent = text;
+  }
+
+  function scoreColor(s) {
+    return s >= 80 ? '#4ade80' : s >= 60 ? '#a89fff' : s >= 40 ? '#f59e0b' : '#f87171';
+  }
+
+  // ── Main search ──────────────────────────────────────────────────────────────
+  async function runSearch() {
+    const raw = input.value.trim();
+    if (!raw) return;
+    box.classList.remove('show');
+
+    const btn = document.getElementById('searchBtn');
+    btn.disabled = true;
+
+    // Reset
+    document.getElementById('correctionBar').classList.remove('show');
+    document.getElementById('overviewPanel').classList.remove('show');
+    document.getElementById('resultsMeta').classList.remove('show');
+    document.getElementById('emptyState').classList.remove('show');
+    document.getElementById('plannerCta').classList.remove('show');
+    document.getElementById('resultsList').innerHTML = '';
+
+    // Step 1 — Correct
+    setStatus('AI is correcting your query…', true);
+    let corrected = raw;
+    try {
+      const r = await fetch('/api/correct', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ query: raw }) });
+      const d = await r.json();
+      corrected = d.corrected || raw;
+      if (d.changed) {
+        document.getElementById('correctionWords').textContent = `"${raw}"  →  "${corrected}"`;
+        document.getElementById('correctionBar').classList.add('show');
+      }
+    } catch(e) {}
+
+    lastQuery = corrected;
+
+    // Step 2 — Overview + Search in parallel
+    setStatus('Generating topic overview…', true);
+    const k = parseInt(document.getElementById('topkSelect').value);
+    const endpoint = activeSource === 'arxiv' ? '/api/search/arxiv' : '/api/search/scholar';
+
+    const [overviewRes, searchRes] = await Promise.allSettled([
+      fetch('/api/overview', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ query: corrected }) }).then(r => r.json()),
+      fetch(`${endpoint}?q=${encodeURIComponent(corrected)}&k=${k}`).then(r => r.json())
+    ]);
+
+    setStatus('', false);
+
+    // Render overview
+    if (overviewRes.status === 'fulfilled') {
+      const ov = overviewRes.value;
+      lastOverview = ov;
+      document.getElementById('ovGreeting').textContent = ov.greeting || '';
+      document.getElementById('ovExplanation').textContent = ov.explanation || '';
+      document.getElementById('ovGap').textContent = ov.gap || '';
+      document.getElementById('ovUsefulness').textContent = ov.usefulness || '';
+
+      const areasEl = document.getElementById('ovAreas');
+      areasEl.innerHTML = (ov.areas || []).map(a => `<span class="area-tag">${a}</span>`).join('');
+
+      const suggEl = document.getElementById('ovSuggestions');
+      suggEl.innerHTML = (ov.suggestions || []).map(s =>
+        `<button class="sugg-tag" onclick="searchFor('${s.replace(/'/g,"\\'")}')">🔍 ${s}</button>`
+      ).join('');
+
+      document.getElementById('overviewPanel').classList.add('show');
+    }
+
+    // Render papers
+    const papers = searchRes.status === 'fulfilled' ? (searchRes.value.papers || []) : [];
+    lastPapers = papers;
+
+    if (!papers.length) {
+      document.getElementById('emptyState').classList.add('show');
+      btn.disabled = false;
+      return;
+    }
+
+    document.getElementById('resCount').textContent = `${papers.length} paper${papers.length !== 1 ? 's' : ''} found`;
+    document.getElementById('kPill').textContent = `top-${k}`;
+    document.getElementById('resultsMeta').classList.add('show');
+
+    papers.forEach((paper, i) => {
+      document.getElementById('resultsList').appendChild(buildCard(paper, i));
+      loadInsight(paper, corrected, i);
+    });
+
+    document.getElementById('plannerCta').classList.add('show');
+    btn.disabled = false;
+  }
+
+  function searchFor(q) {
+    input.value = q;
+    runSearch();
+  }
+
+  function buildCard(paper, idx) {
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.style.animationDelay = `${idx * 55}ms`;
+    card.innerHTML = `
+      <div class="card-body">
+        <div class="card-meta">
+          <span class="src-tag">${paper.source}</span>
+          <span class="year-tag">${paper.year || ''}</span>
+        </div>
+        <a class="card-title" href="${paper.url}" target="_blank" rel="noopener">${paper.title}</a>
+        <div class="card-authors">${paper.authors}</div>
+        ${paper.abstract ? `
+          <button class="abstract-toggle" onclick="toggleAbstract(this)">
+            <i class="ti ti-file-text"></i> Read abstract <i class="ti ti-chevron-down"></i>
+          </button>
+          <div class="abstract-text">${paper.abstract}</div>
+        ` : ''}
+        <div class="score-row">
+          <span class="score-lbl">Relevance</span>
+          <div class="score-track"><div class="score-fill" id="fill-${idx}"></div></div>
+          <span class="score-num" id="pct-${idx}">—</span>
+        </div>
+      </div>
+      <div class="insight-panel">
+        <div class="insight-header"><span class="insight-badge">AI Insight</span></div>
+        <div class="insight-loading" id="insight-${idx}">
+          Analyzing<span class="dots"><span>.</span><span>.</span><span>.</span></span>
+        </div>
+      </div>
+    `;
+    return card;
+  }
+
+  function toggleAbstract(btn) {
+    const abs = btn.nextElementSibling;
+    abs.classList.toggle('show');
+    const icon = btn.querySelector('.ti-chevron-down, .ti-chevron-up');
+    icon.className = icon.className.includes('chevron-down') ? 'ti ti-chevron-up' : 'ti ti-chevron-down';
+  }
+
+  async function loadInsight(paper, query, idx) {
+    try {
+      const res = await fetch('/api/insight', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ query, title: paper.title, abstract: paper.abstract }) });
+      const data = await res.json();
+      const score = data.score ?? 50;
+      const color = scoreColor(score);
+      const fill = document.getElementById(`fill-${idx}`);
+      const pct  = document.getElementById(`pct-${idx}`);
+      const ins  = document.getElementById(`insight-${idx}`);
+      if (fill) { fill.style.background = color; fill.style.width = score + '%'; }
+      if (pct)  { pct.style.color = color; pct.textContent = score + '%'; }
+      if (ins)  { ins.className = 'insight-text'; ins.textContent = data.insight || ''; }
+    } catch(e) {}
+  }
+
+  // ── Init: pick up pending query from planner ────────────────────────────────
+  window.addEventListener('DOMContentLoaded', () => {
+    const pending = localStorage.getItem('ds_pending_query');
+    if (pending) {
+      localStorage.removeItem('ds_pending_query');
+      input.value = pending;
+      runSearch();
+    }
+  });
+  function goToPlanner() {
+    localStorage.setItem('ds_context', JSON.stringify({
+      query: lastQuery,
+      overview: lastOverview,
+      papers: lastPapers.map(p => ({ title: p.title, url: p.url, year: p.year, source: p.source }))
+    }));
+    window.location.href = '/planner';
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Daily Shell — Research Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0f; --bg2: #0d0d18; --bg3: #111120; --border: #1e1e30; --border2: #2a2a40;
+    --purple: #7c6fff; --purple2: #a89fff; --text: #e8e6df; --muted: #5a5a7a; --dimmed: #3a3a55;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Space Grotesk', sans-serif; }
+  body { display: flex; flex-direction: column; }
+
+  /* Header */
+  .header { border-bottom: 1px solid var(--border); padding: 12px 28px; display: flex; align-items: center; gap: 12px; background: #0d0d14; flex-shrink: 0; }
+  .logo { font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 500; color: var(--purple); text-decoration: none; }
+  .logo span { color: var(--text); }
+  .breadcrumb { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .nav-search { margin-left: auto; display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 500; color: var(--purple2); text-decoration: none; font-family: 'IBM Plex Mono', monospace; padding: 6px 14px; border: 1px solid #2e2048; border-radius: 6px; transition: all 0.15s; }
+  .nav-search:hover { background: #1a1428; }
+
+  /* Layout: sidebar + chat */
+  .layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar { width: 280px; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; background: var(--bg2); overflow-y: auto; }
+  .sidebar-section { padding: 16px; border-bottom: 1px solid var(--border); }
+  .sidebar-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
+
+  /* Context panel */
+  .ctx-empty { font-size: 12px; color: var(--dimmed); line-height: 1.5; }
+  .ctx-query { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--purple2); background: #14102a; border: 1px solid #2e2048; border-radius: 6px; padding: 8px 12px; margin-bottom: 10px; word-break: break-word; }
+  .ctx-paper { padding: 8px 0; border-bottom: 1px solid #181828; }
+  .ctx-paper:last-child { border-bottom: none; }
+  .ctx-paper-title { font-size: 11px; color: #8080a8; line-height: 1.4; margin-bottom: 2px; }
+  .ctx-paper-meta { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--dimmed); }
+  .ctx-paper a { color: inherit; text-decoration: none; }
+  .ctx-paper a:hover { color: var(--purple2); }
+
+  /* Search trigger inside planner */
+  .search-trigger { padding: 16px; }
+  .search-trigger-label { font-size: 12px; color: var(--muted); margin-bottom: 10px; line-height: 1.5; }
+  .search-trigger-inp { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: 8px; padding: 9px 12px; font-family: 'Space Grotesk', sans-serif; font-size: 12px; color: var(--text); outline: none; margin-bottom: 8px; }
+  .search-trigger-inp:focus { border-color: var(--purple); }
+  .search-trigger-inp::placeholder { color: var(--dimmed); }
+  .search-trigger-btn { width: 100%; background: #1a1428; border: 1px solid #2e2048; border-radius: 8px; padding: 9px; color: var(--purple2); font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; transition: background 0.15s; }
+  .search-trigger-btn:hover { background: #22143a; }
+
+  /* Chat area */
+  .chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 24px 32px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* Messages */
+  .msg { display: flex; gap: 12px; animation: fadeUp 0.2s ease; max-width: 100%; }
+  .msg.user { flex-direction: row-reverse; }
+  .msg-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .msg.assistant .msg-avatar { background: #1a1428; border: 1px solid #2e2048; color: var(--purple); }
+  .msg.user .msg-avatar { background: #1a2a1a; border: 1px solid #2e482e; color: #4ade80; }
+  .msg-bubble { max-width: 75%; padding: 12px 16px; border-radius: 12px; font-size: 13.5px; line-height: 1.65; }
+  .msg.assistant .msg-bubble { background: var(--bg2); border: 1px solid var(--border); color: #c8c6df; border-top-left-radius: 4px; }
+  .msg.user .msg-bubble { background: #1a1428; border: 1px solid #2e2048; color: var(--purple2); border-top-right-radius: 4px; }
+
+  /* Typing indicator */
+  .typing-indicator { display: flex; align-items: center; gap: 5px; padding: 14px 16px; }
+  .typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--purple); animation: typingDot 1.2s infinite; }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typingDot { 0%,60%,100%{opacity:0.2;transform:scale(0.8)} 30%{opacity:1;transform:scale(1)} }
+
+  /* Chat input */
+  .chat-input-area { border-top: 1px solid var(--border); padding: 16px 32px; flex-shrink: 0; display: flex; gap: 10px; align-items: flex-end; }
+  .chat-textarea { flex: 1; background: var(--bg3); border: 1px solid var(--border2); border-radius: 10px; padding: 12px 16px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; color: var(--text); outline: none; resize: none; min-height: 48px; max-height: 140px; line-height: 1.5; transition: border-color 0.15s; }
+  .chat-textarea:focus { border-color: var(--purple); }
+  .chat-textarea::placeholder { color: var(--dimmed); }
+  .send-btn { background: var(--purple); color: #fff; border: none; border-radius: 8px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; transition: background 0.15s; flex-shrink: 0; }
+  .send-btn:hover { background: #6a5dee; }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Quick prompts */
+  .quick-prompts { padding: 0 32px 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .qp-btn { font-size: 11px; padding: 4px 12px; background: transparent; border: 1px solid var(--border2); border-radius: 20px; color: var(--muted); cursor: pointer; font-family: 'Space Grotesk', sans-serif; transition: all 0.15s; }
+  .qp-btn:hover { border-color: var(--purple); color: var(--purple2); background: #1a1428; }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a class="logo" href="/">daily<span>-shell</span></a>
+  <div class="breadcrumb"><i class="ti ti-chevron-right"></i> Research Planner</div>
+  <a class="nav-search" href="/search"><i class="ti ti-search"></i> Smart Search</a>
+</header>
+
+<div class="layout">
+
+  <!-- Sidebar: context + search trigger -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Search Context</div>
+      <div id="ctxContent">
+        <p class="ctx-empty">No search context loaded.<br/>Use the search below or go to Smart Search first.</p>
+      </div>
+    </div>
+    <div class="search-trigger">
+      <p class="search-trigger-label">Search a topic to load context:</p>
+      <input class="search-trigger-inp" id="sideSearchInput" placeholder="e.g. transformer attention…" />
+      <button class="search-trigger-btn" onclick="goSearch()">
+        <i class="ti ti-search"></i> Open in Smart Search
+      </button>
+    </div>
+  </aside>
+
+  <!-- Chat -->
+  <div class="chat-area">
+    <div class="chat-messages" id="chatMessages"></div>
+
+    <div class="quick-prompts" id="quickPrompts">
+      <button class="qp-btn" onclick="sendQuick('Give me a research outline for this topic')">📋 Research outline</button>
+      <button class="qp-btn" onclick="sendQuick('What are the main open problems in this area?')">🔍 Open problems</button>
+      <button class="qp-btn" onclick="sendQuick('Suggest a 3-month research plan')">📅 Research plan</button>
+      <button class="qp-btn" onclick="sendQuick('What methodology should I use?')">🧪 Methodology</button>
+      <button class="qp-btn" onclick="sendQuick('Who are the key researchers in this field?')">👥 Key researchers</button>
+    </div>
+
+    <div class="chat-input-area">
+      <textarea class="chat-textarea" id="chatInput" placeholder="Ask anything about your research…" rows="1"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()"><i class="ti ti-send"></i></button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let context = null;
+  let chatHistory = [];
+
+  // ── Load context from localStorage ──────────────────────────────────────────
+  function loadContext() {
+    try {
+      // Only load context if we came from search (not a direct visit/reload)
+const fromSearch = document.referrer.includes('/search');
+if (!fromSearch) { localStorage.removeItem('ds_context'); return; }
+const raw = localStorage.getItem('ds_context');
+      if (!raw) return;
+      context = JSON.parse(raw);
+      renderContextPanel();
+      sendWelcome();
+    } catch(e) {}
+  }
+
+  function renderContextPanel() {
+    if (!context) return;
+    const el = document.getElementById('ctxContent');
+    const papers = context.papers || [];
+    el.innerHTML = `
+      <div class="sidebar-label" style="margin-bottom:6px;font-size:9px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px">Query</div>
+      <div class="ctx-query">${context.query}</div>
+      <div class="sidebar-label" style="margin-bottom:6px;font-size:9px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px">Papers Loaded (${papers.length})</div>
+      ${papers.map(p => `
+        <div class="ctx-paper">
+          <div class="ctx-paper-title"><a href="${p.url}" target="_blank">${p.title}</a></div>
+          <div class="ctx-paper-meta">${p.source} · ${p.year || 'n/a'}</div>
+        </div>
+      `).join('')}
+    `;
+  }
+
+  function sendWelcome() {
+    if (!context) return;
+    const paperTitles = (context.papers || []).slice(0, 3).map(p => `"${p.title}"`).join(', ');
+    const welcomeText =
+      `I can see you've been researching **${context.query}**. ` +
+      `I've loaded ${context.papers?.length || 0} papers from your search${paperTitles ? `, including ${paperTitles}` : ''}.\n\n` +
+      `How can I help you plan your research? You can ask me for an outline, open problems, methodology suggestions, a research timeline, or anything else.`;
+    appendMessage('assistant', welcomeText);
+    chatHistory.push({ role: 'assistant', content: welcomeText });
+  }
+
+  // ── Chat ─────────────────────────────────────────────────────────────────────
+  const textarea = document.getElementById('chatInput');
+  textarea.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  textarea.addEventListener('input', () => {
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 140) + 'px';
+  });
+
+  async function sendMessage() {
+    const text = textarea.value.trim();
+    if (!text) return;
+    textarea.value = '';
+    textarea.style.height = 'auto';
+    doSend(text);
+  }
+
+  function sendQuick(text) { doSend(text); }
+
+  async function doSend(text) {
+    document.getElementById('sendBtn').disabled = true;
+    document.getElementById('quickPrompts').style.display = 'none';
+    appendMessage('user', text);
+    chatHistory.push({ role: 'user', content: text });
+
+    const typingId = showTyping();
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: chatHistory, context })
+      });
+      const data = await res.json();
+      removeTyping(typingId);
+
+      const reply = data.reply || 'Sorry, something went wrong.';
+      appendMessage('assistant', reply);
+      chatHistory.push({ role: 'assistant', content: reply });
+    } catch(e) {
+      removeTyping(typingId);
+      appendMessage('assistant', 'Network error — please check the server is running.');
+    }
+
+    document.getElementById('sendBtn').disabled = false;
+  }
+
+  function appendMessage(role, text) {
+    const msgs = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+    div.innerHTML = `
+      <div class="msg-avatar">
+        <i class="ti ${role === 'assistant' ? 'ti-robot' : 'ti-user'}"></i>
+      </div>
+      <div class="msg-bubble">${formatText(text)}</div>
+    `;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function formatText(text) {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br/>');
+  }
+
+  function showTyping() {
+    const msgs = document.getElementById('chatMessages');
+    const id = 'typing-' + Date.now();
+    const div = document.createElement('div');
+    div.className = 'msg assistant';
+    div.id = id;
+    div.innerHTML = `
+      <div class="msg-avatar"><i class="ti ti-robot"></i></div>
+      <div class="msg-bubble">
+        <div class="typing-indicator">
+          <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+        </div>
+      </div>
+    `;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    return id;
+  }
+
+  function removeTyping(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }
+
+  // ── Sidebar search → go to search page with query pre-filled ────────────────
+  function goSearch() {
+    const q = document.getElementById('sideSearchInput').value.trim();
+    if (q) {
+      localStorage.setItem('ds_pending_query', q);
+    }
+    window.location.href = '/search';
+  }
+
+  document.getElementById('sideSearchInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') goSearch();
+  });
+
+  // ── Init ────────────────────────────────────────────────────────────────────
+  loadContext();
+
+  // Pick up pending query from planner sidebar
+  const pending = localStorage.getItem('ds_pending_query');
+  if (pending) {
+    localStorage.removeItem('ds_pending_query');
+    document.getElementById('sideSearchInput').value = pending;
+  }
+
+  // If no context, show default greeting
+  if (!context) {
+    appendMessage('assistant',
+      "Hi! I'm your Research Planner. 👋\n\n" +
+      "I work best when you bring a search query from the **Smart Search Engine** — it loads your topic, papers, and overview directly here.\n\n" +
+      "Or you can type a topic in the sidebar and I'll open Smart Search for you. Once you're back, everything will be pre-loaded!"
+    );
+  }
+</script>
+</body>
+</html>

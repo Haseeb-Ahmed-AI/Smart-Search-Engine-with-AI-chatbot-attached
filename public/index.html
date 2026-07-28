@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Daily Shell</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0f; --bg2: #0d0d18; --border: #1e1e30; --border2: #2a2a40;
+    --purple: #7c6fff; --purple2: #a89fff; --text: #e8e6df; --muted: #5a5a7a;
+  }
+  body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'Space Grotesk', sans-serif; display: flex; flex-direction: column; }
+  .header { border-bottom: 1px solid var(--border); padding: 14px 32px; display: flex; align-items: center; gap: 12px; background: #0d0d14; }
+  .logo { font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 500; color: var(--purple); }
+  .logo span { color: var(--text); }
+  .badge { font-size: 10px; padding: 2px 8px; background: #1a1a2e; color: var(--purple); border: 1px solid #2e2e50; border-radius: 4px; letter-spacing: 0.6px; text-transform: uppercase; font-family: 'IBM Plex Mono', monospace; }
+  .hero { text-align: center; padding: 80px 24px 48px; }
+  .hero-tag { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 16px; }
+  .hero-title { font-size: 42px; font-weight: 700; line-height: 1.15; margin-bottom: 14px; }
+  .hero-title span { color: var(--purple); }
+  .hero-sub { font-size: 15px; color: var(--muted); max-width: 460px; margin: 0 auto; line-height: 1.6; }
+  .cards { display: flex; gap: 24px; justify-content: center; padding: 0 24px 80px; flex-wrap: wrap; }
+  .tool-card {
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 16px; padding: 40px 36px; width: 340px;
+    cursor: pointer; text-decoration: none; color: var(--text);
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    display: flex; flex-direction: column; gap: 16px; position: relative; overflow: hidden;
+  }
+  .tool-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at top left, rgba(124,111,255,0.06), transparent 60%);
+    pointer-events: none;
+  }
+  .tool-card:hover { border-color: var(--purple); transform: translateY(-4px); box-shadow: 0 20px 60px rgba(124,111,255,0.12); }
+  .card-icon { width: 56px; height: 56px; border-radius: 14px; background: #1a1428; border: 1px solid #2e2048; display: flex; align-items: center; justify-content: center; font-size: 26px; color: var(--purple); }
+  .card-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .card-title { font-size: 20px; font-weight: 600; line-height: 1.3; }
+  .card-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .card-cta { margin-top: auto; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; color: var(--purple2); font-family: 'IBM Plex Mono', monospace; }
+  .card-cta i { font-size: 14px; transition: transform 0.15s; }
+  .tool-card:hover .card-cta i { transform: translateX(4px); }
+  .footer { margin-top: auto; border-top: 1px solid var(--border); padding: 18px 32px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="logo">daily<span>-shell</span></div>
+  <div class="badge">Research Suite · POC</div>
+</header>
+<section class="hero">
+  <p class="hero-tag">// Powered by AI</p>
+  <h1 class="hero-title">Your Research<br/><span>Command Center</span></h1>
+  <p class="hero-sub">Search academic papers intelligently, then plan your research — all in one place.</p>
+</section>
+<section class="cards">
+  <a class="tool-card" href="/search">
+    <div class="card-icon"><i class="ti ti-search" aria-hidden="true"></i></div>
+    <div>
+      <p class="card-label">Tool 01</p>
+      <h2 class="card-title">Smart Search Engine</h2>
+    </div>
+    <p class="card-desc">AI-corrected queries, real-time suggestions, topic overviews, and relevance-ranked papers from arXiv and Google Scholar — all in a conversational interface.</p>
+    <span class="card-cta">Open Search <i class="ti ti-arrow-right"></i></span>
+  </a>
+  <a class="tool-card" href="/planner">
+    <div class="card-icon"><i class="ti ti-brain" aria-hidden="true"></i></div>
+    <div>
+      <p class="card-label">Tool 02</p>
+      <h2 class="card-title">Research Planner</h2>
+    </div>
+    <p class="card-desc">A context-aware chatbot that helps you plan your research strategy, identify gaps, structure your work — and connects directly to your search results.</p>
+    <span class="card-cta">Open Planner <i class="ti ti-arrow-right"></i></span>
+  </a>
+</section>
+<footer class="footer">daily-shell · research suite poc</footer>
+<script>
+  // Clear search context when user returns to home
+  localStorage.removeItem('ds_context');
+  localStorage.removeItem('ds_pending_query');
+</script>
+</body>
+</html>
